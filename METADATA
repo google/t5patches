@@ -1,0 +1,42 @@
+name: "t5patches"
+description: "T5Patches"
+
+third_party {
+  url {
+    type: PIPER
+    value: "http://google3/third_party/py/t5patches"
+  }
+}
+
+tricorder: {
+  enable: Pytype
+  enable: ThirdPartyAndExperimentalLint
+  options: {
+    builder: {
+      requires_opt_to_build: true
+    }
+  }
+}
+
+presubmit {
+  check_guitar: {
+    workflow_query: "//third_party/py/t5x/google:t5x_presubmit_guitar_workflow"
+    version: {
+      spec: "cl:WORKSPACE_SYNC"
+    }
+    cluster_name: "FORGE"
+    failure_status: ERROR  # Submit only if project passes
+    submit_execute: true  # Trigger Guitar project before submitting
+    submit_execute_mode: SYNCHRONOUS  # Submit after project completes
+  }
+}
+
+# Check for pyformatting on lines that have changed.
+presubmit: {
+  path_expression: "....py"
+  check_presubmit_service: {
+    base: { id: "CheckPythonFormat" }
+    address: "blade:fmtserver-presubmit"
+    options: "Python"
+  }
+}
