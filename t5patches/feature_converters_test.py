@@ -1,3 +1,17 @@
+# Copyright 2022 The T5Patches Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Tests for feature_converters.
 
 Copyright 2022 Google LLC
@@ -16,11 +30,10 @@ limitations under the License.
 """
 
 from absl.testing import absltest
+from absl.testing import parameterized
 import seqio
 from t5patches import feature_converters
 import tensorflow.compat.v2 as tf
-
-from google3.testing.pybase import parameterized
 
 
 tf.compat.v1.enable_eager_execution()
@@ -220,7 +233,7 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
       params_ct1_long,
       params_ctf_long,
   )
-  def test_negative_training_extra_long_inputs(self):
+  def test_negative_training_extra_long_inputs(self, feature_converter):
     x = [{
         "inputs": [9, 4, 3, 8, 4, 5, 1],
         "negative_targets": [3, 9, 4, 7, 8, 1],
@@ -237,21 +250,9 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
         r".*Feature \\'inputs\\' has length not less than or equal to the "
         r"expected length of 5 during input_validation.*")
 
-    fcs = [
-        feature_converters.NegativeTrainingDiffFeatureConverter(pack=False),
-        feature_converters.NegativeTrainingFirstFeatureConverter(pack=False),
-        feature_converters.NegativeTrainingFullFeatureConverter(pack=False),
-        feature_converters.CorrectiveTrainingDiffFeatureConverter(pack=False),
-        feature_converters.CorrectiveTrainingFullFeatureConverter(pack=False),
-        feature_converters.CorrectiveTrainingFirstFeatureConverter(pack=False)
-    ]
-
-    for fc in fcs:
-      with self.assertRaisesRegex(tf.errors.InvalidArgumentError, expected_msg):
-        converter = fc
-        print(fc)
-        converted_ds = converter(ds, task_feature_lengths)
-        list(converted_ds.as_numpy_iterator())
+    with self.assertRaisesRegex(tf.errors.InvalidArgumentError, expected_msg):
+      converted_ds = feature_converter(ds, task_feature_lengths)
+      list(converted_ds.as_numpy_iterator())
 
   params_nptd = dict(
       testcase_name="nptd",

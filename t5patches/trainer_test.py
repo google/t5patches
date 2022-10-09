@@ -1,3 +1,17 @@
+# Copyright 2022 The T5Patches Authors.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 """Tests for quality.ranklab.projects.mum_workflow.corrections.trainer_lib.
 
 These tests test for the same functionality as TrainerTest,
@@ -191,28 +205,29 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     self.dataset = tf.data.Dataset.range(6).map(mapfn).batch(
         2, drop_remainder=True)
 
-    self.test_trainer = corrections_trainer_lib.SelfDistillationTrainer(
-        mock.create_autospec(
-            models_lib.SelfDistillationEncoderDecoderModel, instance=True),
-        self.init_train_state,
-        partitioning.PjitPartitioner(num_partitions=1),
-        eval_names=['task1', 'task2'],
-        summary_dir=model_dir,
-        train_state_axes=train_state_axes,
-        rng=np.ones(2, np.uint32),
-        learning_rate_fn=lambda step: 2 * step,
-        num_microbatches=None)
+    with mock.patch(
+        'time.time',
+        side_effect=[0]  # trainer init
+    ), mock.patch('absl.logging.log'):
+      self.test_trainer = corrections_trainer_lib.SelfDistillationTrainer(
+          mock.create_autospec(
+              models_lib.SelfDistillationEncoderDecoderModel, instance=True),
+          self.init_train_state,
+          partitioning.PjitPartitioner(num_partitions=1),
+          eval_names=['task1', 'task2'],
+          summary_dir=model_dir,
+          train_state_axes=train_state_axes,
+          rng=np.ones(2, np.uint32),
+          learning_rate_fn=lambda step: 2 * step,
+          num_microbatches=None)
 
   def tearDown(self) -> None:
     self.test_trainer.close()
     return super().tearDown()
 
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.accumulate_grads_microbatched',
-      fake_accum_grads)
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.apply_grads',
-      fake_apply_grads)
+  @mock.patch('t5patches.trainer.accumulate_grads_microbatched',
+              fake_accum_grads)
+  @mock.patch('t5patches.trainer.apply_grads', fake_apply_grads)
   def _test_train(self, precompile):
     trainer = self.test_trainer
     initial_rng = trainer._base_rng
@@ -232,7 +247,7 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     num_steps = 2
     with mock.patch(
         'time.time',
-        side_effect=[1, 5]  # start_time, end_time
+        side_effect=[1, 3, 5]  # start_time, uptime_logged, end_time
     ), mock.patch('absl.logging.log'):  # avoids hidden calls to time.time()
       trainer.train(self.dataset.as_numpy_iterator(), num_steps).result()
 
@@ -245,6 +260,8 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     }
     # (0 + 2) / 2 = 1
     expected_metrics['learning_rate'] = 1
+    # 3.0 - 0.0
+    expected_metrics['timing/uptime'] = 3.0
     # 0+1+2+3 = 6
     expected_train_state = jax.tree_map(lambda x: np.array(x + 6),
                                         self.init_train_state)
@@ -255,7 +272,7 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
                  expected_train_state)
     # Expected step is 6 since we increment it along with the other optimizer
     # values.
-    steps = [2, 2, 2]
+    steps = [2, 2, 2, 2]
     if precompile:
       steps = [0] + steps
       expected_metrics['timing/compilation_seconds'] = 1
@@ -277,9 +294,7 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
   def test_train_precompile(self):
     self._test_train(True)
 
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.eval_step',
-      fake_eval_step)
+  @mock.patch('t5patches.trainer.eval_step', fake_eval_step)
   def _test_eval(self, precompile):
     trainer = self.test_trainer
     initial_rng = trainer._base_rng
@@ -746,12 +761,8 @@ class SelfDistilledTrainerRngDeterminismTest(parameterized.TestCase):
         num_microbatches=None)
     return test_trainer
 
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.accumulate_grads_microbatched'
-  )
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.apply_grads',
-      fake_apply_grads)
+  @mock.patch('t5patches.trainer.accumulate_grads_microbatched')
+  @mock.patch('t5patches.trainer.apply_grads', fake_apply_grads)
   def test_rng_determinism(self, mock_accum_grads):
 
     def fake_accum_grads_rng(model, optimizer, batch, rng, num_microbatches,
@@ -849,12 +860,9 @@ class MutableTrainerTest(parameterized.TestCase):
         num_microbatches=None)
 
   @mock.patch('time.time')
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.accumulate_grads_microbatched',
-      fake_mut_accum_grads)
-  @mock.patch(
-      'google3.quality.ranklab.projects.mum_workflow.corrections.trainer.apply_grads',
-      fake_mut_apply_grads)
+  @mock.patch('t5patches.trainer.accumulate_grads_microbatched',
+              fake_mut_accum_grads)
+  @mock.patch('t5patches.trainer.apply_grads', fake_mut_apply_grads)
   # avoids calls time.time() during logging
   @mock.patch('absl.logging.info', lambda *_: None)
   @mock.patch('absl.logging.log_every_n_seconds', lambda *_: None)
