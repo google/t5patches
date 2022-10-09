@@ -8,7 +8,7 @@ T5Patches is a set of tools for fast and targeted editing of generative language
 Encoder-decoder language models, despite their overall high performance, often exhibit suboptimal or undesirable behaviors such as poor style or hallucinations. These behaviors limit our ability to deploy these models without ad-hoc filtering that reduces their coverage and impact. In this work, we introduce and examine two methods to correct these models in a small fine-tuning step using corrected and targeted training examples.
 
 ### Background
-Large language models, in particular T5/MUM, are pre-trained on a large corpora of text with a masked language objective. Although this objective is not directly applicable to practical applications, it helps the model understand the structure of language and relationships among various entities.
+Large language models, in particular T5, are pre-trained on a large corpora of text with a masked language objective. Although this objective is not directly applicable to practical applications, it helps the model understand the structure of language and relationships among various entities.
 
 In the following fine-tuning step, models are often trained using a smaller, but sizable, “silver” training dataset specific to a task. The silver dataset can be extracted from logs, or generated synthetically by other systems. In this fine-tuning step, the model learns a specific mapping from a given “input” text to an “output” text.
 
@@ -58,7 +58,7 @@ For corrective training, once the corrective outputs are created, one can simply
 For targeted negative training, create a dataset with inputs, negative_targets, and corrected_targets. The corrected_targets can simply be a copy of the negative_targets, except for the tokens one wishes to push down (for those tokens, the corrected_targets can simply be a dummy token or token sequence of the same length as the negative tokens of interest).
 
 ### Notes and Considerations
-In our experiments with the T5/MUM Base model (600M parameters) we have been able to edit the model’s style with only a few hundred corrective or negative targeted examples, over less than 10 training steps.
+In our experiments with the T5 Base model (600M parameters) we have been able to edit the model’s style with only a few hundred corrective or negative targeted examples, over less than 10 training steps.
 
 
 ## Support
