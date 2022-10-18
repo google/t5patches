@@ -46,8 +46,15 @@ def get_first_diff_mask(seq1: tf.Tensor, seq2: tf.Tensor) -> tf.Tensor:
   output_length = len(seq1)
   pad_size = max(0, output_length - len(seq2))
   padded_or_trimmed_seq2 = tf.pad(seq2[:output_length], [[0, pad_size]])
-  first_diff_idx = tf.argmax(tf.math.not_equal(seq1, padded_or_trimmed_seq2))
-  return tf.cast(tf.one_hot(first_diff_idx, output_length), tf.int32)
+
+  def zeros():
+    return tf.zeros_like(seq1)
+
+  def first():
+    first_diff_idx = tf.argmax(tf.math.not_equal(seq1, padded_or_trimmed_seq2))
+    return tf.cast(tf.one_hot(first_diff_idx, output_length), tf.int32)
+
+  return tf.cond(tf.math.reduce_all(seq1 == seq2), zeros, first)
 
 
 def get_diff_mask(seq1: tf.Tensor, seq2: tf.Tensor) -> tf.Tensor:
