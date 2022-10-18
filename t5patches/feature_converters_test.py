@@ -194,49 +194,6 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
     }
     assert_dataset(converted_ds, expected)
 
-  params_nt1equal = dict(
-      testcase_name="nt1equal",
-      feature_converter=feature_converters
-      .NegativeTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[0, 0, 0, 0, 0],
-      decoder_tokens=[3, 9, 4, 5, 1],
-  )
-  params_ct1equal = dict(
-      testcase_name="ct1equal",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[0, 0, 0, 0, 0],
-      decoder_tokens=[3, 9, 4, 5, 1],
-  )
-
-  @parameterized.named_parameters(
-      params_nt1equal,
-      params_ct1equal,
-  )
-  def test_negative_training_targets_equal(self, feature_converter,
-                                           expected_weights, decoder_tokens):
-    x = [{
-        "inputs": [9, 4, 3, 8, 1],
-        "negative_targets": [3, 9, 4, 5, 1],
-        "corrected_targets": [3, 9, 4, 5, 1]
-    }]
-    ds = create_default_dataset(
-        x, feature_names=("inputs", "negative_targets", "corrected_targets"))
-    task_feature_lengths = {
-        "inputs": 5,
-        "negative_targets": 5,
-        "corrected_targets": 5
-    }
-    converted_ds = feature_converter(ds, task_feature_lengths)
-
-    expected = {
-        "encoder_input_tokens": [9, 4, 3, 8, 1],
-        "decoder_target_tokens": decoder_tokens,
-        "decoder_input_tokens": [0] + decoder_tokens[:-1],
-        "decoder_loss_weights": expected_weights,
-    }
-    assert_dataset(converted_ds, expected)
-
   params_ntd_long = dict(
       testcase_name="ntd",
       feature_converter=feature_converters.NegativeTrainingDiffFeatureConverter(
