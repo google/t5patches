@@ -182,7 +182,8 @@ class NegativeTrainingFirstFeatureConverter(NegativeTrainingFeatureConverterBase
 
   For decoder_loss_weights, only one token will be marked with a negative
   weight, i.e. the first occurrence of a token diff between negative_targets
-  and corrected_targets. All other tokens will have weights of 0.
+  and corrected_targets. All other tokens will have weights of 1.
+  Padding tokens will have weights of 0.
 
   Example:
   ds = [
@@ -205,7 +206,7 @@ class NegativeTrainingFirstFeatureConverter(NegativeTrainingFeatureConverterBase
           "encoder_positions": [0, 1, 2, 3, 0],
       "decoder_target_tokens": [3, 9, 1],
        "decoder_input_tokens": [0, 3, 9],
-       "decoder_loss_weights": [0, -1, 0],
+       "decoder_loss_weights": [1, -1, 1],
         "decoder_segment_ids": [1, 1, 1],
           "decoder_positions": [0, 1, 2],
   },
@@ -215,16 +216,18 @@ class NegativeTrainingFirstFeatureConverter(NegativeTrainingFeatureConverterBase
           "encoder_positions": [0, 1, 2, 3, 4],
       "decoder_target_tokens": [4, 1, 0],
        "decoder_input_tokens": [0, 4, 0],
-       "decoder_loss_weights": [0, -1, 0],
+       "decoder_loss_weights": [1, -1, 1],
         "decoder_segment_ids": [1, 1, 0],
           "decoder_positions": [0, 1, 0],
   }]
-
   """
 
   def get_decoder_weights(self, features: Mapping[str, tf.Tensor]) -> tf.Tensor:
     return feature_converters_utils.get_first_diff_mask(
-        features["negative_targets"], features["corrected_targets"]) * -1
+        features["negative_targets"], features["corrected_targets"]
+    ) * -2 + seqio.feature_converters.non_padding_position(
+        features["negative_targets"]
+    )
 
   def get_decoder_target_tokens(self,
                                 features: Mapping[str, tf.Tensor]) -> tf.Tensor:
@@ -246,7 +249,8 @@ class NegativeTrainingDiffFeatureConverter(NegativeTrainingFeatureConverterBase
 
   All tokens from negative_targets that differ from the corresponding
   corrected_targets will be marked with a negative weight.
-  All other tokens will have weights of 0.
+  All other tokens will have weights of 1.
+  Padding tokens will have weights of 0.
 
   Example:
   ds = [
@@ -269,7 +273,7 @@ class NegativeTrainingDiffFeatureConverter(NegativeTrainingFeatureConverterBase
           "encoder_positions": [0, 1, 2, 3, 0],
       "decoder_target_tokens": [3, 9, 1],
        "decoder_input_tokens": [0, 3, 9],
-       "decoder_loss_weights": [0, -1, -1],
+       "decoder_loss_weights": [1, -1, -1],
         "decoder_segment_ids": [1, 1, 1],
           "decoder_positions": [0, 1, 2],
   },
@@ -279,16 +283,18 @@ class NegativeTrainingDiffFeatureConverter(NegativeTrainingFeatureConverterBase
           "encoder_positions": [0, 1, 2, 3, 4],
       "decoder_target_tokens": [4, 1, 0],
        "decoder_input_tokens": [0, 4, 0],
-       "decoder_loss_weights": [0, -1, 0],
+       "decoder_loss_weights": [1, -1, 1],
         "decoder_segment_ids": [1, 1, 0],
           "decoder_positions": [0, 1, 0],
   }]
-
   """
 
   def get_decoder_weights(self, features: Mapping[str, tf.Tensor]) -> tf.Tensor:
     return feature_converters_utils.get_diff_mask(
-        features["negative_targets"], features["corrected_targets"]) * -1
+        features["negative_targets"], features["corrected_targets"]
+    ) * -2 + seqio.feature_converters.non_padding_position(
+        features["negative_targets"]
+    )
 
   def get_decoder_target_tokens(self,
                                 features: Mapping[str, tf.Tensor]) -> tf.Tensor:

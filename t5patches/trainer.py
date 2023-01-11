@@ -240,10 +240,12 @@ def accumulate_grads_microbatched(
       dropout_rng, sub_dropout_rng = jax.random.split(dropout_rng)
       mbatch = get_microbatch(batch, loop_cnt)
       # We need to annotate the microbatch sharding as we would a batch.
-      mbatch = jax.tree_map(
+      mbatch = jax.tree_util.tree_map(
           lambda x: partitioning.with_sharding_constraint(  # pylint: disable=g-long-lambda
-              x, data_partition_spec),
-          mbatch)
+              x, data_partition_spec
+          ),
+          mbatch,
+      )
       if flax_mutables is None:
         (_, metrics), grad = grad_fn(train_state.params, mbatch,
                                      sub_dropout_rng)
@@ -263,7 +265,7 @@ def accumulate_grads_microbatched(
       metrics, grad, flax_mutables = metrics_and_grad(loop_cnt, dropout_rng,
                                                       flax_mutables)
 
-      grad_accum = jax.tree_map(jnp.add, grad_accum, grad)
+      grad_accum = jax.tree_util.tree_map(jnp.add, grad_accum, grad)
       metrics = jax.lax.cond(loop_cnt == 0, lambda _: metrics,
                              lambda _: merge_metrics(prev_metrics, metrics),
                              None)
@@ -271,8 +273,9 @@ def accumulate_grads_microbatched(
 
     # Initialize gradient accumulation loop state.
     accum_dtype = jnp.float32
-    grad_accum_init = jax.tree_map(lambda x: jnp.zeros(x.shape, accum_dtype),
-                                   train_state.params)
+    grad_accum_init = jax.tree_util.tree_map(
+        lambda x: jnp.zeros(x.shape, accum_dtype), train_state.params
+    )
     initial_metrics_shape, _, _ = jax.eval_shape(
         metrics_and_grad, loop_cnt=0, dropout_rng=dropout_rng)
 
@@ -373,10 +376,13 @@ class SelfDistillationTrainer(Trainer):
 
     return self._partitioner.partition(
         train_step,
-        in_axis_resources=(self._train_state_axes,
-                           self._partitioner.data_partition_spec),
+        in_axis_resources=(
+            self._train_state_axes,
+            self._partitioner.data_partition_spec,
+        ),
         out_axis_resources=(self._train_state_axes, None),
-        donate_argnums=(0,))
+        donate_argnums=(0,),
+    )
 
   @cached_property
   def _partitioned_eval_step(self) -> PartitionedEvalCallable:
