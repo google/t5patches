@@ -101,22 +101,24 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
       dict(
           testcase_name='unlikelihood_model',
           model_cls=models.EncoderDecoderModelUL,
-          expected_scores=[-2.09588997, -1.3750219]),
+          expected_scores=[-2.09588997, -6.190234],
+      ),
       dict(
           testcase_name='negative_likelihood_model',
           model_cls=models.EncoderDecoderModelNL,
-          expected_scores=[-0.40760607, 1.8152121]),
+          expected_scores=[-0.40760607, -3.0],
+      ),
       dict(
           testcase_name='targeted_negative_model',
           model_cls=models.EncoderDecoderModelTN,
-          expected_scores=[-3.2936196, -3.9873507]),
+          expected_scores=[-2.310803, -3.9873507],
+      ),
   )
   def test_score_batch(self, model_cls, expected_scores):
     encoder_input_tokens = jnp.ones((2, 3))
-    # For this test, decoder input and target tokens are dummy values.
     decoder_input_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
     decoder_target_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
-    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [0, -1, 0, -1]])
+    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [1, -1, 1, -1]])
     logits = jnp.arange(0, 24).reshape((2, 4, 3))
     params = {'foo': jnp.zeros(3)}
 
@@ -154,30 +156,33 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
                                               rngs=None,
                                               mutable=False)
     # Scores are not log likelihood. Instead, they are log likelihood for
-    # positive tokens and negative unlikelihood for negative tokens.
+    # positive tokens and the corresponding negative token loss of the model
+    # for negative tokens.
     np.testing.assert_allclose(res, expected_scores, rtol=1e-4)
 
   @parameterized.named_parameters(
       dict(
           testcase_name='unlikelihood_model',
           model_cls=models.EncoderDecoderModelUL,
-          expected_scores=[-2.09588997, -1.3750219]),
+          expected_scores=[-2.09588997, -6.190234],
+      ),
       dict(
           testcase_name='negative_likelihood_model',
           model_cls=models.EncoderDecoderModelNL,
-          expected_scores=[-0.40760607, 1.8152121]),
+          expected_scores=[-0.40760607, -3.0],
+      ),
       dict(
           testcase_name='targeted_negative_model',
           model_cls=models.EncoderDecoderModelTN,
-          expected_scores=[-3.2936196, -3.9873507]),
+          expected_scores=[-2.310803, -3.9873507],
+      ),
   )
   def test_score_batch_can_return_intermediates(self, model_cls,
                                                 expected_scores):
     encoder_input_tokens = jnp.ones((2, 3))
-    # For this test, decoder input and target tokens are dummy values.
     decoder_input_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
     decoder_target_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
-    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [0, -1, 0, -1]])
+    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [1, -1, 1, -1]])
     logits = jnp.arange(0, 24).reshape((2, 4, 3))
     modified_variables = {'intermediates': {'bar': jnp.ones(5)}}
     params = {'foo': jnp.zeros(3)}

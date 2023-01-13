@@ -429,11 +429,13 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
 
     original_dist = jax.nn.softmax(orig_logits, axis=-1)
     # zero out the probability at a target token if it is assigned a -1 weight
-    # return original_dist if the token is assigned a 0 weight
-    # return the one-hot-encoded target if the token is assigned a 1 weight
+    # return original_dist otherwise
     desired_dist_unnorm = jnp.where(
-        jnp.expand_dims(weights, -1) > 0, targets,
-        original_dist + targets * jnp.expand_dims(weights, -1) * original_dist)
+        jnp.expand_dims(weights, -1) == -1,
+        original_dist - targets * original_dist,
+        original_dist,
+    )
+
     desired_dist = (
         desired_dist_unnorm / desired_dist_unnorm.sum(-1, keepdims=True))
     return desired_dist
@@ -490,8 +492,11 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
     desired_dist = self._get_desired_dist(logits, target_tokens, weights,
                                           orig_logits)
 
-    ce_token_scores = losses.cross_entropy_with_logits(
-        logits, desired_dist, z_loss=0.0)[0]
+    mask = jnp.where(weights != 0, 1, 0)
+    ce_token_scores = (
+        losses.cross_entropy_with_logits(logits, desired_dist, z_loss=0.0)[0]
+        * mask
+    )
 
     loss = jnp.sum(ce_token_scores)
 
@@ -561,8 +566,11 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
     desired_dist = self._get_desired_dist(logits, target_tokens, weights,
                                           orig_logits)
 
-    ce_token_scores = losses.cross_entropy_with_logits(
-        logits, desired_dist, z_loss=0.0)[0]
+    mask = jnp.where(weights != 0, 1, 0)
+    ce_token_scores = (
+        losses.cross_entropy_with_logits(logits, desired_dist, z_loss=0.0)[0]
+        * mask
+    )
 
     sequence_scores = jnp.sum(ce_token_scores, axis=-1) * -1  # [batch]
 

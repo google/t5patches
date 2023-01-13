@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests for feature_converters.
+"""Tests for fcs.
 
 Copyright 2022 Google LLC
 
@@ -32,7 +32,7 @@ limitations under the License.
 from absl.testing import absltest
 from absl.testing import parameterized
 import seqio
-from t5patches import feature_converters
+from t5patches import feature_converters as fcs
 import tensorflow.compat.v2 as tf
 
 
@@ -45,43 +45,37 @@ create_default_dataset = seqio.test_utils.create_default_dataset
 class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
   params_ntd = dict(
       testcase_name="ntd",
-      feature_converter=feature_converters.NegativeTrainingDiffFeatureConverter(
-          pack=False),
-      expected_weights=[0, 0, -1, -1, 0],
+      feature_converter=fcs.NegativeTrainingDiffFeatureConverter(pack=False),
+      expected_weights=[1, 1, -1, -1, 0],
       decoder_tokens=[3, 9, 4, 1, 0],
   )
   params_nt1 = dict(
       testcase_name="nt1",
-      feature_converter=feature_converters
-      .NegativeTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[0, 0, -1, 0, 0],
+      feature_converter=fcs.NegativeTrainingFirstFeatureConverter(pack=False),
+      expected_weights=[1, 1, -1, 1, 0],
       decoder_tokens=[3, 9, 4, 1, 0],
   )
   params_ntf = dict(
       testcase_name="ntf",
-      feature_converter=feature_converters.NegativeTrainingFullFeatureConverter(
-          pack=False),
+      feature_converter=fcs.NegativeTrainingFullFeatureConverter(pack=False),
       expected_weights=[-1, -1, -1, -1, 0],
       decoder_tokens=[3, 9, 4, 1, 0],
   )
   params_ctd = dict(
       testcase_name="ctd",
-      feature_converter=feature_converters
-      .CorrectiveTrainingDiffFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingDiffFeatureConverter(pack=False),
       expected_weights=[0, 0, 1, 1, 0],
       decoder_tokens=[3, 9, 3, 2, 0],
   )
   params_ct1 = dict(
       testcase_name="ct1",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFirstFeatureConverter(pack=False),
       expected_weights=[0, 0, 1, 0, 0],
       decoder_tokens=[3, 9, 3, 2, 0],
   )
   params_ctf = dict(
       testcase_name="ctf",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFullFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFullFeatureConverter(pack=False),
       expected_weights=[1, 1, 1, 1, 0],
       decoder_tokens=[3, 9, 3, 2, 0],
   )
@@ -120,43 +114,37 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
 
   params_ntd_max = dict(
       testcase_name="ntd",
-      feature_converter=feature_converters.NegativeTrainingDiffFeatureConverter(
-          pack=False),
-      expected_weights=[0, 0, -1, -1, -1],
+      feature_converter=fcs.NegativeTrainingDiffFeatureConverter(pack=False),
+      expected_weights=[1, 1, -1, -1, -1],
       decoder_tokens=[3, 9, 4, 5, 1],
   )
   params_nt1_max = dict(
       testcase_name="nt1",
-      feature_converter=feature_converters
-      .NegativeTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[0, 0, -1, 0, 0],
+      feature_converter=fcs.NegativeTrainingFirstFeatureConverter(pack=False),
+      expected_weights=[1, 1, -1, 1, 1],
       decoder_tokens=[3, 9, 4, 5, 1],
   )
   params_ntf_max = dict(
       testcase_name="ntf",
-      feature_converter=feature_converters.NegativeTrainingFullFeatureConverter(
-          pack=False),
+      feature_converter=fcs.NegativeTrainingFullFeatureConverter(pack=False),
       expected_weights=[-1, -1, -1, -1, -1],
       decoder_tokens=[3, 9, 4, 5, 1],
   )
   params_ctd_max = dict(
       testcase_name="ctd",
-      feature_converter=feature_converters
-      .CorrectiveTrainingDiffFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingDiffFeatureConverter(pack=False),
       expected_weights=[0, 0, 1, 1, 0],
       decoder_tokens=[3, 9, 3, 1, 0],
   )
   params_ct1_max = dict(
       testcase_name="ct1",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFirstFeatureConverter(pack=False),
       expected_weights=[0, 0, 1, 0, 0],
       decoder_tokens=[3, 9, 3, 1, 0],
   )
   params_ctf_max = dict(
       testcase_name="ctf",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFullFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFullFeatureConverter(pack=False),
       expected_weights=[1, 1, 1, 1, 0],
       decoder_tokens=[3, 9, 3, 1, 0],
   )
@@ -196,15 +184,13 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
 
   params_nt1equal = dict(
       testcase_name="nt1equal",
-      feature_converter=feature_converters
-      .NegativeTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[0, 0, 0, 0, 0],
+      feature_converter=fcs.NegativeTrainingFirstFeatureConverter(pack=False),
+      expected_weights=[1, 1, 1, 1, 1],
       decoder_tokens=[3, 9, 4, 5, 1],
   )
   params_ct1equal = dict(
       testcase_name="ct1equal",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFirstFeatureConverter(pack=False),
       expected_weights=[0, 0, 0, 0, 0],
       decoder_tokens=[3, 9, 4, 5, 1],
   )
@@ -239,33 +225,27 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
 
   params_ntd_long = dict(
       testcase_name="ntd",
-      feature_converter=feature_converters.NegativeTrainingDiffFeatureConverter(
-          pack=False),
+      feature_converter=fcs.NegativeTrainingDiffFeatureConverter(pack=False),
   )
   params_nt1_long = dict(
       testcase_name="nt1",
-      feature_converter=feature_converters
-      .NegativeTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.NegativeTrainingFirstFeatureConverter(pack=False),
   )
   params_ntf_long = dict(
       testcase_name="ntf",
-      feature_converter=feature_converters.NegativeTrainingFullFeatureConverter(
-          pack=False),
+      feature_converter=fcs.NegativeTrainingFullFeatureConverter(pack=False),
   )
   params_ctd_long = dict(
       testcase_name="ctd",
-      feature_converter=feature_converters
-      .CorrectiveTrainingDiffFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingDiffFeatureConverter(pack=False),
   )
   params_ct1_long = dict(
       testcase_name="ct1",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFirstFeatureConverter(pack=False),
   )
   params_ctf_long = dict(
       testcase_name="ctf",
-      feature_converter=feature_converters
-      .CorrectiveTrainingFullFeatureConverter(pack=False),
+      feature_converter=fcs.CorrectiveTrainingFullFeatureConverter(pack=False),
   )
 
   @parameterized.named_parameters(
@@ -299,20 +279,23 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
 
   params_nptd = dict(
       testcase_name="nptd",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingDiffFeatureConverter(pack=False),
-      expected_weights=[[0, -1, -1, -1, 0], [1, 1, 1, 1, 0]],
+      feature_converter=fcs.NegativeAndPositiveTrainingDiffFeatureConverter(
+          pack=False
+      ),
+      expected_weights=[[1, -1, -1, -1, 0], [1, 1, 1, 1, 0]],
   )
   params_npt1 = dict(
       testcase_name="npt1",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingFirstFeatureConverter(pack=False),
-      expected_weights=[[0, -1, 0, 0, 0], [1, 1, 1, 1, 0]],
+      feature_converter=fcs.NegativeAndPositiveTrainingFirstFeatureConverter(
+          pack=False
+      ),
+      expected_weights=[[1, -1, 1, 1, 0], [1, 1, 1, 1, 0]],
   )
   params_nptf = dict(
       testcase_name="nptf",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingFullFeatureConverter(pack=False),
+      feature_converter=fcs.NegativeAndPositiveTrainingFullFeatureConverter(
+          pack=False
+      ),
       expected_weights=[[-1, -1, -1, -1, 0], [1, 1, 1, 1, 0]],
   )
 
@@ -356,18 +339,21 @@ class NegativeTrainingFeatureConverterTest(parameterized.TestCase):
 
   params_nptd_unmatched = dict(
       testcase_name="nptd",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingDiffFeatureConverter(pack=False),
+      feature_converter=fcs.NegativeAndPositiveTrainingDiffFeatureConverter(
+          pack=False
+      ),
   )
   params_npt1_unmatched = dict(
       testcase_name="npt1",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingFirstFeatureConverter(pack=False),
+      feature_converter=fcs.NegativeAndPositiveTrainingFirstFeatureConverter(
+          pack=False
+      ),
   )
   params_nptf_unmatched = dict(
       testcase_name="nptf",
-      feature_converter=feature_converters
-      .NegativeAndPositiveTrainingFullFeatureConverter(pack=False),
+      feature_converter=fcs.NegativeAndPositiveTrainingFullFeatureConverter(
+          pack=False
+      ),
   )
 
   @parameterized.named_parameters(
