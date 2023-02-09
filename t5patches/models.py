@@ -56,7 +56,7 @@ from t5x import metrics as metrics_lib
 from t5x.models import EncoderDecoderModel
 import tensorflow as tf
 
-Array = Union[np.ndarray, jnp.ndarray, jax.pxla.ShardedDeviceArray, tf.Tensor]
+Array = Union[np.ndarray, jax.Array, tf.Tensor]
 MetricsMap = metrics_lib.MetricsMap
 PyTreeDef = type(jax.tree_structure(None))
 
