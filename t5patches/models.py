@@ -269,7 +269,7 @@ class EncoderDecoderModelUL(EncoderDecoderModel):
       # `intermediates` should be tuples tracking all instantiations of a value.
       # These values each have just one instantiation, hence singletons.
     else:
-      logits = self._compute_logits(params, batch)  # type: jnp.ndarray
+      logits = self._compute_logits(params, batch)  # type: jnp.ndarray  # pytype: disable=annotation-type-mismatch  # jax-ndarray
 
     per_token_ce_ul = self._per_token_ce_ul(logits, target_tokens, weights)
     sequence_scores = per_token_ce_ul.sum(-1) * -1  # [batch]
@@ -561,7 +561,7 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
       # `intermediates` should be tuples tracking all instantiations of a value.
       # These values each have just one instantiation, hence singletons.
     else:
-      logits = self._compute_logits(params, batch)  # type: jnp.ndarray
+      logits = self._compute_logits(params, batch)  # type: jnp.ndarray  # pytype: disable=annotation-type-mismatch  # jax-ndarray
       orig_logits = self._compute_logits(orig_params, batch)
     desired_dist = self._get_desired_dist(logits, target_tokens, weights,
                                           orig_logits)

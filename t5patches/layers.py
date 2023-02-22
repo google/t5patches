@@ -348,9 +348,9 @@ def _canonicalize_tuple(x):
     return (x,)
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # DenseGeneral for attention layers.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class DenseGeneral(nn.Module):
   """A linear transformation (without bias) with flexible axes.
 
@@ -650,9 +650,9 @@ class RelativePositionBiases(nn.Module):
     return values[jnp.newaxis, ...]
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # T5 Layernorm - no subtraction of mean or bias.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 class LayerNorm(nn.Module):
   """T5 Layer normalization operating on the last axis of the input data."""
   epsilon: float = 1e-6
@@ -673,9 +673,9 @@ class LayerNorm(nn.Module):
     return y * scale
 
 
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 # Mask-making utility functions.
-#------------------------------------------------------------------------------
+# ------------------------------------------------------------------------------
 def make_attention_mask(query_input: Array,
                         key_input: Array,
                         pairwise_fn: Callable = jnp.multiply,
@@ -879,4 +879,4 @@ def make_decoder_mask(decoder_target_tokens: Array,
         make_attention_mask(
             decoder_segment_ids, decoder_segment_ids, jnp.equal, dtype=dtype))
 
-  return combine_masks(*masks, dtype=dtype)
+  return combine_masks(*masks, dtype=dtype)  # pytype: disable=bad-return-type  # jax-ndarray

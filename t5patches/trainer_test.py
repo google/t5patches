@@ -153,15 +153,11 @@ def fake_value_and_grad_fn_without_weight_sum(callable_fn, has_aux=False):
     i = batch['i'].sum()
     optimizer = optimizers.Optimizer(
         optimizers.sgd(0.1),
-        state=optimizers.OptimizerState(
-            step=0, param_states={
-                'bias': 0,
-                'kernel': 0
-            }),
-        target={
-            'bias': np.zeros(4),
-            'kernel': np.zeros((2, 4))
-        })
+        state=optimizers.OptimizerState(  # pytype: disable=wrong-arg-types  # jax-ndarray
+            step=0, param_states={'bias': 0, 'kernel': 0}
+        ),
+        target={'bias': np.zeros(4), 'kernel': np.zeros((2, 4))},
+    )
     train_state = train_state_lib.FlaxOptimTrainState(optimizer)
     grad_accum = jax.tree_map(lambda x: i, train_state)
     # Add j to each metric.
@@ -187,15 +183,11 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     super().setUp()
     self.init_optimizer = optimizers.Optimizer(
         optimizers.sgd(0.1),
-        state=optimizers.OptimizerState(
-            step=0, param_states={
-                'bias': 0,
-                'kernel': 0
-            }),
-        target={
-            'bias': np.zeros(4),
-            'kernel': np.zeros((2, 4))
-        })
+        state=optimizers.OptimizerState(  # pytype: disable=wrong-arg-types  # jax-ndarray
+            step=0, param_states={'bias': 0, 'kernel': 0}
+        ),
+        target={'bias': np.zeros(4), 'kernel': np.zeros((2, 4))},
+    )
     self.init_train_state = train_state_lib.FlaxOptimTrainState(
         self.init_optimizer)
     train_state_axes = jax.tree_map(lambda x: None, self.init_train_state)
@@ -825,15 +817,11 @@ class MutableTrainerTest(parameterized.TestCase):
     super().setUp()
     self.init_optimizer = optimizers.Optimizer(
         optimizers.sgd(0.1),
-        state=optimizers.OptimizerState(
-            step=0, param_states={
-                'bias': 0,
-                'kernel': 0
-            }),
-        target={
-            'bias': np.zeros(4),
-            'kernel': np.zeros((2, 4))
-        })
+        state=optimizers.OptimizerState(  # pytype: disable=wrong-arg-types  # jax-ndarray
+            step=0, param_states={'bias': 0, 'kernel': 0}
+        ),
+        target={'bias': np.zeros(4), 'kernel': np.zeros((2, 4))},
+    )
     self.init_train_state = train_state_lib.FlaxOptimTrainState(
         _optimizer=self.init_optimizer,
         flax_mutables=FlaxMutables(variables={

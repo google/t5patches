@@ -94,7 +94,7 @@ def eval_step(model: models.SelfDistillationEncoderDecoderModel,
     A Mapping from metric names to their Metric values.
 
   """
-  _, metrics = model.eval_fn(train_state.params, batch, orig_train_state.params)
+  _, metrics = model.eval_fn(train_state.params, batch, orig_train_state.params)  # pytype: disable=wrong-arg-types  # jax-ndarray
   return metrics
 
 
@@ -367,12 +367,13 @@ class SelfDistillationTrainer(Trainer):
           train_state,
           batch,
           learning_rate=self._learning_rate_fn(train_state.step),
-          dropout_rng=self._get_step_rng(train_state.step),
+          dropout_rng=self._get_step_rng(train_state.step),  # pytype: disable=wrong-arg-types  # jax-ndarray
           model=self._model,
           num_microbatches=self._num_microbatches,
           weight_metrics_computer=self._weight_metrics_computer,
           data_partition_spec=self._partitioner.data_partition_spec,
-          orig_train_state=self.orig_train_state)
+          orig_train_state=self.orig_train_state,
+      )
 
     return self._partitioner.partition(
         train_step,
