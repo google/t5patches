@@ -67,7 +67,6 @@ MetricMapSpec = Mapping[str, jax.ShapeDtypeStruct]
 MetricValueMapType = Mapping[str, clu.values.Value]
 ModelWeights = Any
 MutableMetricMapType = Dict[str, clu.metrics.Metric]
-PyTreeDef = type(jax.tree_util.tree_structure(None))
 PartitionSpec = partitioning.PartitionSpec
 
 if TYPE_CHECKING:  # See b/163639353

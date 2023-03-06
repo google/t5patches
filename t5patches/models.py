@@ -58,7 +58,7 @@ import tensorflow as tf
 
 Array = Union[np.ndarray, jax.Array, tf.Tensor]
 MetricsMap = metrics_lib.MetricsMap
-PyTreeDef = type(jax.tree_structure(None))
+PyTree = Any
 
 
 @gin.configurable(module='models')
@@ -123,7 +123,7 @@ class EncoderDecoderModelNL(EncoderDecoderModel):
 
   def loss_fn(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       dropout_rng: Optional[jax.random.KeyArray],
   ) -> Tuple[jnp.ndarray, MetricsMap]:
@@ -225,7 +225,7 @@ class EncoderDecoderModelUL(EncoderDecoderModel):
 
   def score_batch(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       return_intermediates: bool = False,
   ) -> Union[jnp.ndarray, Tuple[jnp.ndarray, Mapping[str, Any]]]:
@@ -281,7 +281,7 @@ class EncoderDecoderModelUL(EncoderDecoderModel):
 
   def loss_fn(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       dropout_rng: Optional[jax.random.KeyArray],
   ) -> Tuple[jnp.ndarray, MetricsMap]:
@@ -335,10 +335,10 @@ class SelfDistillationEncoderDecoderModel(EncoderDecoderModel, abc.ABC):
   @abc.abstractmethod
   def loss_fn(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       dropout_rng: Optional[jax.random.KeyArray],
-      orig_params: PyTreeDef,
+      orig_params: PyTree,
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Computes loss during training.
 
@@ -360,9 +360,9 @@ class SelfDistillationEncoderDecoderModel(EncoderDecoderModel, abc.ABC):
 
   def eval_fn(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
-      orig_params: PyTreeDef,
+      orig_params: PyTree,
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Computes loss and metrics during the evaluation.
 
@@ -442,10 +442,10 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
 
   def loss_fn(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       dropout_rng: Optional[jax.random.KeyArray],
-      orig_params: PyTreeDef,
+      orig_params: PyTree,
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Minimize cross entropy between the model and desired distributions.
 
@@ -511,10 +511,10 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
 
   def score_batch(
       self,
-      params: PyTreeDef,
+      params: PyTree,
       batch: Mapping[str, jnp.ndarray],
       return_intermediates: bool = False,
-      orig_params: PyTreeDef = None,
+      orig_params: PyTree = None,
   ) -> Union[jnp.ndarray, Tuple[jnp.ndarray, Mapping[str, Any]]]:
     """Compute score (negative loss) on a batch.
 
