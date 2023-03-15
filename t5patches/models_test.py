@@ -271,7 +271,7 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
     ds_iter = tf.data.Dataset.from_tensors(input_data).as_numpy_iterator()
     input_shapes = {k: input_shape for k in input_data}
 
-    train_state_initializer = utils.TrainStateInitializer(
+    train_state_initializer = utils.TrainStateInitializer(  # pytype: disable=wrong-arg-types  # jax-array
         optimizer_def=model.optimizer_def,
         init_fn=model.get_initial_variables,
         input_shapes=input_shapes,
