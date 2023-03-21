@@ -296,7 +296,7 @@ class Transformer(nn.Module):
 
   def setup(self):
     cfg = self.config
-    self.shared_embedding = layers.Embed(
+    self.shared_embedding = layers.Embed(  # pytype: disable=wrong-arg-types  # jax-types
         num_embeddings=cfg.vocab_size,
         features=cfg.emb_dim,
         dtype=cfg.dtype,
