@@ -263,8 +263,7 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
         'decoder_loss_weights': decoder_loss_weights,
     }
 
-    partitioner = partitioning.PjitPartitioner(
-        num_partitions=1, use_cpu_pjit=True)
+    partitioner = partitioning.PjitPartitioner(num_partitions=1)
 
     model = get_t5_test_model(model_cls)
 
