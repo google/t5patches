@@ -1,4 +1,4 @@
-# Copyright 2022 The T5Patches Authors.
+# Copyright 2023 The T5Patches Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -240,7 +240,7 @@ def accumulate_grads_microbatched(
       mbatch = get_microbatch(batch, loop_cnt)
       # We need to annotate the microbatch sharding as we would a batch.
       mbatch = jax.tree_util.tree_map(
-          lambda x: partitioning.with_sharding_constraint(  # pylint: disable=g-long-lambda
+          lambda x: jax.experimental.pjit.with_sharding_constraint(  # pylint: disable=g-long-lambda
               x, data_partition_spec
           ),
           mbatch,
