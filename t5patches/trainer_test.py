@@ -68,7 +68,7 @@ FlaxMutables = flax.core.FrozenDict
 
 
 @contextlib.contextmanager
-def fake_log_elapsed_time(_, event=None):  # pylint: disable=unused-argument
+def fake_log_elapsed_time(fmt, fun_name, event=None):  # pylint: disable=unused-argument
   yield
 
 
