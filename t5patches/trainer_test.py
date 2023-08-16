@@ -117,7 +117,7 @@ def fake_apply_grads(optimizer,
                      other_state_variables=None):
   del weight_metrics_computer
   del other_state_variables
-  metrics['learning_rate'] = clu.metrics.Average(learning_rate, count=1)
+  metrics['learning_rate'] = clu.metrics.Average(learning_rate, count=1)  # pytype: disable=wrong-arg-types  # jnp-array
   optimizer = jax.tree_map(lambda x, g: x + g, optimizer, grad_accum)
   return optimizer, metrics
 
