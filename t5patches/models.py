@@ -401,9 +401,12 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
   FEATURE_CONVERTER_CLS = NegativeTrainingFirstFeatureConverter
 
   def _get_desired_dist(
-      self, logits: jnp.ndarray, target_tokens: jnp.ndarray,
+      self,
+      logits: jnp.ndarray,
+      target_tokens: jnp.ndarray,
       weights: jnp.ndarray,
-      orig_logits: jnp.ndarray) -> Tuple[jnp.ndarray, jnp.ndarray]:
+      orig_logits: jnp.ndarray,
+  ) -> jnp.ndarray:
     """Get the desired conditional distributions to optimize towards.
 
     The desired distribution is either the original probability distribution,
@@ -419,9 +422,7 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
         seq, vocab]
 
     Returns:
-      Tuple of [batch, seq, vocab] arrays. First is the desired distribution,
-      unnormalized. Second is the desired distribution.
-
+      A [batch, seq, vocab] array representing the desired distribution.
     """
     # target_tokens is [batch, seq]. targets is [batch, seq, num_classes]
     targets = common_utils.onehot(
