@@ -125,7 +125,7 @@ class EncoderDecoderModelNL(EncoderDecoderModel):
       self,
       params: PyTree,
       batch: Mapping[str, jnp.ndarray],
-      dropout_rng: Optional[jax.random.KeyArray],
+      dropout_rng: Optional[jax.Array],
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Loss function used for training with a negative likelihood.
 
@@ -283,7 +283,7 @@ class EncoderDecoderModelUL(EncoderDecoderModel):
       self,
       params: PyTree,
       batch: Mapping[str, jnp.ndarray],
-      dropout_rng: Optional[jax.random.KeyArray],
+      dropout_rng: Optional[jax.Array],
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Unlikelihood-based loss function used for training.
 
@@ -337,7 +337,7 @@ class SelfDistillationEncoderDecoderModel(EncoderDecoderModel, abc.ABC):
       self,
       params: PyTree,
       batch: Mapping[str, jnp.ndarray],
-      dropout_rng: Optional[jax.random.KeyArray],
+      dropout_rng: Optional[jax.Array],
       orig_params: PyTree,
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Computes loss during training.
@@ -445,7 +445,7 @@ class EncoderDecoderModelTN(SelfDistillationEncoderDecoderModel):
       self,
       params: PyTree,
       batch: Mapping[str, jnp.ndarray],
-      dropout_rng: Optional[jax.random.KeyArray],
+      dropout_rng: Optional[jax.Array],
       orig_params: PyTree,
   ) -> Tuple[jnp.ndarray, MetricsMap]:
     """Minimize cross entropy between the model and desired distributions.
