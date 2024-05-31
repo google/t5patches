@@ -1,4 +1,4 @@
-# Copyright 2023 The T5Patches Authors.
+# Copyright 2024 The T5Patches Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -93,7 +93,7 @@ def _validate_events(test_case, summary_dir, expected_metrics, steps):
     else:
       actual_events[event.summary.value[0].tag] = float(tf.make_ndarray(tensor))
 
-  jax.tree_map(test_case.assertAlmostEqual, actual_events, expected_metrics)
+  jax.tree.map(test_case.assertAlmostEqual, actual_events, expected_metrics)
 
 
 def fake_accum_grads(model, optimizer, batch, rng, num_microbatches,
@@ -102,7 +102,7 @@ def fake_accum_grads(model, optimizer, batch, rng, num_microbatches,
   # Add `i` to each optimzer value.
   i = batch['i'].sum()
   assert orig_train_state is not None
-  grad_accum = jax.tree_map(lambda x: i, optimizer)
+  grad_accum = jax.tree.map(lambda x: i, optimizer)
   # Add j to each metric.
   j = batch['j'].sum()
   metrics = {'loss': metrics_lib.Sum(j), 'accuracy': metrics_lib.Sum(j)}
@@ -118,7 +118,7 @@ def fake_apply_grads(optimizer,
   del weight_metrics_computer
   del other_state_variables
   metrics['learning_rate'] = clu.metrics.Average(learning_rate, count=1)  # pytype: disable=wrong-arg-types  # jnp-array
-  optimizer = jax.tree_map(lambda x, g: x + g, optimizer, grad_accum)
+  optimizer = jax.tree.map(lambda x, g: x + g, optimizer, grad_accum)
   return optimizer, metrics
 
 
@@ -159,7 +159,7 @@ def fake_value_and_grad_fn_without_weight_sum(callable_fn, has_aux=False):
         target={'bias': np.zeros(4), 'kernel': np.zeros((2, 4))},
     )
     train_state = train_state_lib.FlaxOptimTrainState(optimizer)
-    grad_accum = jax.tree_map(lambda x: i, train_state)
+    grad_accum = jax.tree.map(lambda x: i, train_state)
     # Add j to each metric.
     j = batch['j'].sum()
     metrics = {'loss': metrics_lib.Sum(j), 'accuracy': metrics_lib.Sum(j)}
@@ -190,7 +190,7 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     )
     self.init_train_state = train_state_lib.FlaxOptimTrainState(
         self.init_optimizer)
-    train_state_axes = jax.tree_map(lambda x: None, self.init_train_state)
+    train_state_axes = jax.tree.map(lambda x: None, self.init_train_state)
     model_dir = self.create_tempdir().full_path
 
     mapfn = lambda i: {'i': [tf.cast(i, tf.int32)], 'j': [tf.cast(1, tf.int32)]}
@@ -202,8 +202,7 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
         side_effect=[0]  # trainer init
     ), mock.patch('absl.logging.log'):
       self.test_trainer = corrections_trainer_lib.SelfDistillationTrainer(
-          mock.create_autospec(
-              models_lib.SelfDistillationEncoderDecoderModel, instance=True),
+          mock.create_autospec(models_lib.SelfDistillationModel, instance=True),
           self.init_train_state,
           partitioning.PjitPartitioner(num_partitions=1),
           eval_names=['task1', 'task2'],
@@ -211,7 +210,8 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
           train_state_axes=train_state_axes,
           rng=np.ones(2, np.uint32),
           learning_rate_fn=lambda step: 2 * step,
-          num_microbatches=None)
+          num_microbatches=None,
+      )
 
   def tearDown(self) -> None:
     self.test_trainer.close()
@@ -255,13 +255,15 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
     # 3.0 - 0.0
     expected_metrics['timing/uptime'] = 3.0
     # 0+1+2+3 = 6
-    expected_train_state = jax.tree_map(lambda x: np.array(x + 6),
-                                        self.init_train_state)
+    expected_train_state = jax.tree.map(
+        lambda x: np.array(x + 6), self.init_train_state
+    )
 
     # Base rng must remain the same
     np.testing.assert_array_equal(trainer._base_rng, initial_rng)
-    jax.tree_map(np.testing.assert_equal, trainer.train_state,
-                 expected_train_state)
+    jax.tree.map(
+        np.testing.assert_equal, trainer.train_state, expected_train_state
+    )
     # Expected step is 6 since we increment it along with the other optimizer
     # values.
     steps = [2, 2, 2, 2]
@@ -688,8 +690,9 @@ class SelfDistilledTrainerTest(parameterized.TestCase):
         self.test_trainer._base_rng, num_microbatches, self.init_train_state)
 
     i = batch['i'].sum()
-    expected_grad_accum = jax.tree_map(lambda x: i,
-                                       self.init_train_state).params
+    expected_grad_accum = jax.tree.map(
+        lambda x: i, self.init_train_state
+    ).params
     self.assertEqual(expected_grad_accum, grad_accum)
     self.assertEqual(metrics['loss'].compute(), 2)
     self.assertEqual(metrics['accuracy'].compute(), 2)
@@ -738,11 +741,10 @@ class SelfDistilledTrainerRngDeterminismTest(parameterized.TestCase):
             'kernel': np.zeros((2, 4))
         })
     init_train_state = train_state_lib.FlaxOptimTrainState(init_optimizer)
-    train_state_axes = jax.tree_map(lambda x: None, init_train_state)
+    train_state_axes = jax.tree.map(lambda x: None, init_train_state)
 
     test_trainer = corrections_trainer_lib.SelfDistillationTrainer(
-        mock.create_autospec(
-            models_lib.SelfDistillationEncoderDecoderModel, instance=True),
+        mock.create_autospec(models_lib.SelfDistillationModel, instance=True),
         init_train_state,
         partitioning.PjitPartitioner(num_partitions=1),
         eval_names=['task1', 'task2'],
@@ -750,7 +752,8 @@ class SelfDistilledTrainerRngDeterminismTest(parameterized.TestCase):
         train_state_axes=train_state_axes,
         rng=jax.random.PRNGKey(random_seed),
         learning_rate_fn=lambda step: 2 * step,
-        num_microbatches=None)
+        num_microbatches=None,
+    )
     return test_trainer
 
   @mock.patch('t5patches.trainer.accumulate_grads_microbatched')
@@ -762,7 +765,7 @@ class SelfDistilledTrainerRngDeterminismTest(parameterized.TestCase):
       del model, batch, num_microbatches, data_partition_spec
       # Add 1, which will increment the step as a side effect.
       assert orig_train_state is not None
-      grad_accum = jax.tree_map(lambda x: 1, optimizer)
+      grad_accum = jax.tree.map(lambda x: 1, optimizer)
       m = {'rng': metrics_lib.Sum(jnp.sum(jax.random.key_data(rng)))}
       return grad_accum, m, None
 
@@ -795,7 +798,7 @@ def fake_mut_accum_grads(model, optimizer, batch, rng, num_microbatches,
   del model, num_microbatches, rng, data_partition_spec
   # Add `i` to each optimzer value.
   i = batch['i'].sum()
-  grad_accum = jax.tree_map(lambda x: i, optimizer)
+  grad_accum = jax.tree.map(lambda x: i, optimizer)
   # Add j to each metric.
   j = batch['j'].sum()
   assert orig_train_state is not None
@@ -811,7 +814,7 @@ def fake_mut_apply_grads(optimizer, grad_accum, metrics, learning_rate,
   del weight_metrics_computer, other_state_variables
   metrics['learning_rate'] = clu.metrics.Average.from_model_output(
       learning_rate)
-  optimizer = jax.tree_map(lambda x, g: x + g, optimizer, grad_accum)
+  optimizer = jax.tree.map(lambda x, g: x + g, optimizer, grad_accum)
   return optimizer, metrics
 
 
@@ -832,7 +835,7 @@ class MutableTrainerTest(parameterized.TestCase):
             'keys': np.zeros((10, 2)),
             'values': np.zeros((10, 5)),
         }))
-    train_state_axes = jax.tree_map(lambda x: None, self.init_train_state)
+    train_state_axes = jax.tree.map(lambda x: None, self.init_train_state)
     model_dir = self.create_tempdir().full_path
 
     mapfn = lambda i: {'i': [tf.cast(i, tf.int32)], 'j': [tf.cast(1, tf.int32)]}
@@ -840,8 +843,7 @@ class MutableTrainerTest(parameterized.TestCase):
         2, drop_remainder=True)
 
     self.test_trainer = corrections_trainer_lib.SelfDistillationTrainer(
-        mock.create_autospec(
-            models_lib.SelfDistillationEncoderDecoderModel, instance=True),
+        mock.create_autospec(models_lib.SelfDistillationModel, instance=True),
         self.init_train_state,
         partitioning.PjitPartitioner(num_partitions=1),
         eval_names=['task1', 'task2'],
@@ -849,7 +851,8 @@ class MutableTrainerTest(parameterized.TestCase):
         train_state_axes=train_state_axes,
         rng=np.ones(2, np.uint32),
         learning_rate_fn=lambda step: 2 * (step + 1),
-        num_microbatches=None)
+        num_microbatches=None,
+    )
 
   @mock.patch('time.time')
   @mock.patch('t5patches.trainer.accumulate_grads_microbatched',
@@ -872,11 +875,12 @@ class MutableTrainerTest(parameterized.TestCase):
     batch = next(ds_iter)
     train_state, _ = trainer._partitioned_train_step(trainer.train_state, batch)
 
-    expected_train_state = jax.tree_map(lambda x: np.array(x + 1),
-                                        self.init_train_state)
+    expected_train_state = jax.tree.map(
+        lambda x: np.array(x + 1), self.init_train_state
+    )
     # Base rng must remain the same
     np.testing.assert_array_equal(trainer._base_rng, initial_rng)
-    jax.tree_map(np.testing.assert_equal, train_state, expected_train_state)
+    jax.tree.map(np.testing.assert_equal, train_state, expected_train_state)
 
     self.assertIsNone(trainer._compiled_train_step)
     self.assertEqual(trainer._partitioned_train_step.call_count, num_steps)
@@ -891,8 +895,9 @@ class MutableTrainerTest(parameterized.TestCase):
         self.test_trainer._base_rng, num_microbatches, self.init_train_state)
 
     i = batch['i'].sum()
-    expected_grad_accum = jax.tree_map(lambda x: i,
-                                       self.init_train_state).params
+    expected_grad_accum = jax.tree.map(
+        lambda x: i, self.init_train_state
+    ).params
     self.assertEqual(expected_grad_accum, grad_accum)
     self.assertEqual(metrics['loss'].compute(), 2)
     self.assertEqual(metrics['accuracy'].compute(), 2)
