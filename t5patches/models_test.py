@@ -1,4 +1,4 @@
-# Copyright 2023 The T5Patches Authors.
+# Copyright 2024 The T5Patches Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ def get_t5_test_model(model_cls, **config_overrides):
   )
 
   tiny_config = dataclasses.replace(tiny_config, **config_overrides)
-  sentencepiece_model_file = 'gs://t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model'
+  sentencepiece_model_file = '/bigstore/t5-data/vocabs/cc_all.32000.100extra/sentencepiece.model'
   vocabulary = seqio.SentencePieceVocabulary(sentencepiece_model_file)
   return model_cls(
       module=network.Transformer(tiny_config),
@@ -101,24 +101,51 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
       dict(
           testcase_name='unlikelihood_model',
           model_cls=models.EncoderDecoderModelUL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
           expected_scores=[-2.09588997, -6.190234],
       ),
       dict(
           testcase_name='negative_likelihood_model',
           model_cls=models.EncoderDecoderModelNL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
           expected_scores=[-0.40760607, -3.0],
       ),
       dict(
-          testcase_name='targeted_negative_model',
-          model_cls=models.EncoderDecoderModelTN,
-          expected_scores=[-2.310803, -3.9873507],
+          testcase_name='targeted_negative_tnfll_model',
+          model_cls=models.EncoderDecoderModelTNFLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-2.461224, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnff_model',
+          model_cls=models.EncoderDecoderModelTNFF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -3.9873507],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrr_model',
+          model_cls=models.EncoderDecoderModelTNRR,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
+          expected_scores=[-2.8245807, -11.3777275],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrll_model',
+          model_cls=models.EncoderDecoderModelTNRLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-4.639796, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrf_model',
+          model_cls=models.EncoderDecoderModelTNRF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -13.042522],
       ),
   )
-  def test_score_batch(self, model_cls, expected_scores):
+  def test_score_batch(self, model_cls, weights, expected_scores):
     encoder_input_tokens = jnp.ones((2, 3))
     decoder_input_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
     decoder_target_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
-    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [1, -1, 1, -1]])
+    decoder_loss_weights = jnp.array(weights)
     logits = jnp.arange(0, 24).reshape((2, 4, 3))
     params = {'foo': jnp.zeros(3)}
 
@@ -130,31 +157,34 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
         'encoder_input_tokens': encoder_input_tokens,
         'decoder_input_tokens': decoder_input_tokens,
         'decoder_target_tokens': decoder_target_tokens,
-        'decoder_loss_weights': decoder_loss_weights
+        'decoder_loss_weights': decoder_loss_weights,
     }
 
     def mock_init(self):
       self.module = mock_transformer
+      self.alpha = 1
 
     with mock.patch.object(model_cls, '__init__', new=mock_init):
       model = model_cls()
-      if isinstance(model, models.EncoderDecoderModelTN):
+      if isinstance(model, models.SelfDistillationModel):
         res = model.score_batch(params, batch, orig_params=params)
       else:
         res = model.score_batch(params, batch)
 
-    mock_transformer.apply.assert_called_with({'params': params},
-                                              encoder_input_tokens,
-                                              decoder_input_tokens,
-                                              decoder_target_tokens,
-                                              encoder_segment_ids=None,
-                                              decoder_segment_ids=None,
-                                              encoder_positions=None,
-                                              decoder_positions=None,
-                                              decode=False,
-                                              enable_dropout=False,
-                                              rngs=None,
-                                              mutable=False)
+    mock_transformer.apply.assert_called_with(
+        {'params': params},
+        encoder_input_tokens,
+        decoder_input_tokens,
+        decoder_target_tokens,
+        encoder_segment_ids=None,
+        decoder_segment_ids=None,
+        encoder_positions=None,
+        decoder_positions=None,
+        decode=False,
+        enable_dropout=False,
+        rngs=None,
+        mutable=False,
+    )
     # Scores are not log likelihood. Instead, they are log likelihood for
     # positive tokens and the corresponding negative token loss of the model
     # for negative tokens.
@@ -164,25 +194,146 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
       dict(
           testcase_name='unlikelihood_model',
           model_cls=models.EncoderDecoderModelUL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
+          expected_scores=[-1.9555511, -5.502723],
+      ),
+      dict(
+          testcase_name='negative_likelihood_model',
+          model_cls=models.EncoderDecoderModelNL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
+          expected_scores=[-1.1114091, -3.9076061],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnff_model',
+          model_cls=models.EncoderDecoderModelTNFF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -2.826071],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnfll_model',
+          model_cls=models.EncoderDecoderModelTNFLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-2.1382182, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrr_model',
+          model_cls=models.EncoderDecoderModelTNRR,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
+          expected_scores=[-1.4122901, -5.6888638],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrll_model',
+          model_cls=models.EncoderDecoderModelTNRLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-3.2275052, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrf_model',
+          model_cls=models.EncoderDecoderModelTNRF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -7.3536587],
+      ),
+  )
+  def test_score_batch_alpha(self, model_cls, weights, expected_scores):
+    encoder_input_tokens = jnp.ones((2, 3))
+    decoder_input_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
+    decoder_target_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
+    decoder_loss_weights = jnp.array(weights)
+    logits = jnp.arange(0, 24).reshape((2, 4, 3))
+    params = {'foo': jnp.zeros(3)}
+
+    mock_transformer = mock.Mock()
+    mock_transformer.apply.return_value = logits
+    mock_transformer.dtype = jnp.float32
+
+    batch = {
+        'encoder_input_tokens': encoder_input_tokens,
+        'decoder_input_tokens': decoder_input_tokens,
+        'decoder_target_tokens': decoder_target_tokens,
+        'decoder_loss_weights': decoder_loss_weights,
+    }
+
+    def mock_init(self):
+      self.module = mock_transformer
+      self.alpha = 0.5
+
+    with mock.patch.object(model_cls, '__init__', new=mock_init):
+      model = model_cls()
+      if isinstance(model, models.SelfDistillationModel):
+        res = model.score_batch(params, batch, orig_params=params)
+      else:
+        res = model.score_batch(params, batch)
+
+    mock_transformer.apply.assert_called_with(
+        {'params': params},
+        encoder_input_tokens,
+        decoder_input_tokens,
+        decoder_target_tokens,
+        encoder_segment_ids=None,
+        decoder_segment_ids=None,
+        encoder_positions=None,
+        decoder_positions=None,
+        decode=False,
+        enable_dropout=False,
+        rngs=None,
+        mutable=False,
+    )
+    # Scores are not log likelihood. Instead, they are log likelihood for
+    # positive tokens and the corresponding negative token loss of the model
+    # for negative tokens.
+    np.testing.assert_allclose(res, expected_scores, rtol=1e-4)
+
+  @parameterized.named_parameters(
+      dict(
+          testcase_name='unlikelihood_model',
+          model_cls=models.EncoderDecoderModelUL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
           expected_scores=[-2.09588997, -6.190234],
       ),
       dict(
           testcase_name='negative_likelihood_model',
           model_cls=models.EncoderDecoderModelNL,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
           expected_scores=[-0.40760607, -3.0],
       ),
       dict(
-          testcase_name='targeted_negative_model',
-          model_cls=models.EncoderDecoderModelTN,
-          expected_scores=[-2.310803, -3.9873507],
+          testcase_name='targeted_negative_tnff_model',
+          model_cls=models.EncoderDecoderModelTNFF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -3.9873507],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnfll_model',
+          model_cls=models.EncoderDecoderModelTNFLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-2.461224, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrr_model',
+          model_cls=models.EncoderDecoderModelTNRR,
+          weights=[[1, 1, -1, 0], [1, -1, 1, -1]],
+          expected_scores=[-2.8245807, -11.3777275],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrll_model',
+          model_cls=models.EncoderDecoderModelTNRLL,
+          weights=[[1, 1, -1, 0], [0, 0, 0, 0]],
+          expected_scores=[-4.639796, 0],
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrf_model',
+          model_cls=models.EncoderDecoderModelTNRF,
+          weights=[[0, 0, 0, 0], [1, -1, 1, -1]],
+          expected_scores=[0, -13.042522],
       ),
   )
-  def test_score_batch_can_return_intermediates(self, model_cls,
-                                                expected_scores):
+  def test_score_batch_can_return_intermediates(
+      self, model_cls, weights, expected_scores
+  ):
     encoder_input_tokens = jnp.ones((2, 3))
     decoder_input_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
     decoder_target_tokens = jnp.array([[1, 2, 1, 0], [0, 1, 0, 2]])
-    decoder_loss_weights = jnp.array([[1, 1, -1, 0], [1, -1, 1, -1]])
+    decoder_loss_weights = jnp.array(weights)
     logits = jnp.arange(0, 24).reshape((2, 4, 3))
     modified_variables = {'intermediates': {'bar': jnp.ones(5)}}
     params = {'foo': jnp.zeros(3)}
@@ -200,10 +351,11 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
 
     def mock_init(self):
       self.module = mock_transformer
+      self.alpha = 1
 
     with mock.patch.object(model_cls, '__init__', new=mock_init):
       model = model_cls()
-      if isinstance(model, models.EncoderDecoderModelTN):
+      if isinstance(model, models.SelfDistillationModel):
         scores, intermediates = model.score_batch(
             params, batch, return_intermediates=True, orig_params=params)
       else:
@@ -235,15 +387,38 @@ class EncoderDecoderModelsTest(parameterized.TestCase):
       dict(
           testcase_name='unlikelihood_model',
           model_cls=models.EncoderDecoderModelUL,
-          trainer_cls=trainer_lib.Trainer),
+          trainer_cls=trainer_lib.Trainer,
+      ),
       dict(
           testcase_name='negative_likelihood_model',
           model_cls=models.EncoderDecoderModelNL,
-          trainer_cls=trainer_lib.Trainer),
+          trainer_cls=trainer_lib.Trainer,
+      ),
       dict(
-          testcase_name='targeted_negative_model',
-          model_cls=models.EncoderDecoderModelTN,
-          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer),
+          testcase_name='targeted_negative_tnff_model',
+          model_cls=models.EncoderDecoderModelTNFF,
+          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer,
+      ),
+      dict(
+          testcase_name='targeted_negative_tnfll_model',
+          model_cls=models.EncoderDecoderModelTNFLL,
+          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer,
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrr_model',
+          model_cls=models.EncoderDecoderModelTNRR,
+          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer,
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrll_model',
+          model_cls=models.EncoderDecoderModelTNRLL,
+          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer,
+      ),
+      dict(
+          testcase_name='targeted_negative_tnrf_model',
+          model_cls=models.EncoderDecoderModelTNRF,
+          trainer_cls=corrections_trainer_lib.SelfDistillationTrainer,
+      ),
   )
   def test_train_transformer_wmt(self, model_cls, trainer_cls):
     # Note: since this test initializes and trains three separate models for

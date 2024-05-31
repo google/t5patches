@@ -1,4 +1,4 @@
-# Copyright 2023 The T5Patches Authors.
+# Copyright 2024 The T5Patches Authors.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -75,23 +75,25 @@ else:
   cached_property = cached_property.cached_property
 
 
-def eval_step(model: models.SelfDistillationEncoderDecoderModel,
-              train_state: train_state_lib.TrainState, batch: jnp.ndarray,
-              orig_train_state: train_state_lib.TrainState) -> MetricMapType:
+def eval_step(
+    model: models.SelfDistillationModel,
+    train_state: train_state_lib.TrainState,
+    batch: jnp.ndarray,
+    orig_train_state: train_state_lib.TrainState,
+) -> MetricMapType:
   """Default evaluation step.
 
   Same as t5x eval_step, except the evaluation function also takes in original
   model params as input.
 
   Args:
-    model: an instance of a SelfDistillationEncoderDecoderModel to evaluate.
+    model: an instance of a SelfDistillationModel to evaluate.
     train_state: current train state (parameters and optimizer state).
     batch: batch of data.
     orig_train_state: original train state before training began.
 
   Returns:
     A Mapping from metric names to their Metric values.
-
   """
   _, metrics = model.eval_fn(train_state.params, batch, orig_train_state.params)  # pytype: disable=wrong-arg-types  # jax-ndarray
   return metrics
@@ -102,11 +104,11 @@ def train_with_lr(
     batch: BatchType,
     learning_rate: jnp.ndarray,
     dropout_rng: Rng,
-    model: models.SelfDistillationEncoderDecoderModel,
+    model: models.SelfDistillationModel,
     num_microbatches: Optional[int],
     weight_metrics_computer: Optional[WeightMetricsComputer] = None,
     data_partition_spec: PartitionSpec = PartitionSpec("data"),
-    orig_train_state: Optional[train_state_lib.TrainState] = None
+    orig_train_state: Optional[train_state_lib.TrainState] = None,
 ) -> Tuple[train_state_lib.TrainState, MetricMapType]:
   """Main training function with LR schedule.
 
@@ -118,7 +120,7 @@ def train_with_lr(
     batch: a batch of data.
     learning_rate: learning rate for the gradient step.
     dropout_rng: jax PRNGKey for dropout.
-    model: an instance of a SelfDistillationEncoderDecoderModel to train.
+    model: an instance of a SelfDistillationModel to train.
     num_microbatches: the number of microbatches to use, or None for direct
       training.
     weight_metrics_computer: A WeightMetricsComputer instance, or None, to
@@ -130,7 +132,6 @@ def train_with_lr(
 
   Returns:
     Tuple of the new train_state and metrics
-
   """
   grad_accum, metrics, flax_mutables = (
       accumulate_grads_microbatched(
@@ -154,22 +155,23 @@ def train_with_lr(
 
 
 def accumulate_grads_microbatched(
-    model: models.SelfDistillationEncoderDecoderModel,
+    model: models.SelfDistillationModel,
     train_state: train_state_lib.TrainState,
     batch: BatchType,
     dropout_rng: Rng,
     num_microbatches: Optional[int],
     data_partition_spec: PartitionSpec = PartitionSpec("data"),
     orig_train_state: Optional[train_state_lib.TrainState] = None,
-) -> Tuple[train_state_lib.TrainState, MutableMetricMapType,
-           Optional[FlaxMutables]]:
+) -> Tuple[
+    train_state_lib.TrainState, MutableMetricMapType, Optional[FlaxMutables]
+]:
   """Implements optional microbatched gradient accumulation.
 
   Same logic as accumulate_grads_microbatched, except that the grad_fn
   can optionally take in original model params.
 
   Args:
-    model: the instantiation of `SelfDistillationEncoderDecoderModel` to train.
+    model: the instantiation of `SelfDistillationModel` to train.
     train_state: A train state with model parameters and optimizer state.
     batch: input batch consisting of either - simply-padded batched features
       'encoder_input_tokens', 'decoder_input_tokens' 'decoder_target_tokens'
@@ -240,7 +242,7 @@ def accumulate_grads_microbatched(
       mbatch = get_microbatch(batch, loop_cnt)
       # We need to annotate the microbatch sharding as we would a batch.
       mbatch = jax.tree_util.tree_map(
-          lambda x: jax.experimental.pjit.with_sharding_constraint(  # pylint: disable=g-long-lambda
+          lambda x: partitioning.with_sharding_constraint(  # pylint: disable=g-long-lambda
               x, data_partition_spec
           ),
           mbatch,
@@ -295,18 +297,20 @@ def accumulate_grads_microbatched(
 class SelfDistillationTrainer(Trainer):
   """Training loop with optional microbatches."""
 
-  def __init__(self,
-               model: models.SelfDistillationEncoderDecoderModel,
-               train_state: train_state_lib.TrainState,
-               partitioner: partitioning.BasePartitioner,
-               eval_names: Sequence[str],
-               summary_dir: Optional[str],
-               train_state_axes: Any,
-               rng: Rng,
-               learning_rate_fn: LearningRateCallable,
-               num_microbatches: Optional[int],
-               weight_metrics_computer: Optional[WeightMetricsComputer] = None,
-               orig_train_state: Optional[train_state_lib.TrainState] = None):
+  def __init__(
+      self,
+      model: models.SelfDistillationModel,
+      train_state: train_state_lib.TrainState,
+      partitioner: partitioning.BasePartitioner,
+      eval_names: Sequence[str],
+      summary_dir: Optional[str],
+      train_state_axes: Any,
+      rng: Rng,
+      learning_rate_fn: LearningRateCallable,
+      num_microbatches: Optional[int],
+      weight_metrics_computer: Optional[WeightMetricsComputer] = None,
+      orig_train_state: Optional[train_state_lib.TrainState] = None,
+  ):
     """Trainer for training with self-distillation.
 
     Behaves exactly like the t5x Trainer, except that this Trainer also keeps
@@ -315,7 +319,7 @@ class SelfDistillationTrainer(Trainer):
     for targeted negative (TN) training.
 
     Args:
-      model: instantiation of `SelfDistillationEncoderDecoderModel` to train.
+      model: instantiation of `SelfDistillationModel` to train.
       train_state: a train state with parameters and optimizer state.
       partitioner: the partitioner to use.
       eval_names: names of evaluation datasets, which must match the keys of the
@@ -354,7 +358,7 @@ class SelfDistillationTrainer(Trainer):
 
     # assignment happens in base class, but here we explicitly type to a
     # narrower model class
-    self._model: models.SelfDistillationEncoderDecoderModel = model
+    self._model: models.SelfDistillationModel = model
 
   @cached_property
   def _partitioned_train_step(self) -> PartitionedTrainCallable:
